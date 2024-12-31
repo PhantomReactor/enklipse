@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { ClipResponse } from "@/types/types";
+import { redirect } from "next/navigation";
 
 export async function POST(request: Request) {
   // Add CORS headers
@@ -21,22 +21,28 @@ export async function POST(request: Request) {
 
   try {
     const clipResponse: ClipResponse = await request.json();
-
+    if (!clipResponse || !clipResponse.clipId) {
+      return NextResponse.json(
+        { error: "No clip response data received" },
+        { status: 400, headers: corsHeaders }
+      );
+    }
     // Process the clipResponse data as needed
     console.log("Received ClipResponse:", clipResponse);
 
     // Encode title and revalidate paths
     const encodedTitle = encodeURIComponent(clipResponse.title);
     revalidatePath("/videos");
+    revalidatePath(`/generate/video/${clipResponse.clipId}`);
+    redirect(`/generate/video/${clipResponse.clipId}`);
 
-    const url = new URL(`${request.headers.get("origin")}/generate/video`);
-    url.searchParams.set("title", encodedTitle);
-    url.searchParams.set("clipId", clipResponse.clipId);
-
-    return NextResponse.redirect(url, {
-      status: 303, // See Other
-      headers: corsHeaders,
-    });
+    return NextResponse.json(
+      { success: true },
+      {
+        status: 200,
+        headers: corsHeaders,
+      }
+    );
   } catch (error) {
     console.error("Error processing video data:", error);
     return NextResponse.json(
