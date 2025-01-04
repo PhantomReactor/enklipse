@@ -1,4 +1,4 @@
-export const api_url = "http://localhost:8080/enklipse/api/v1";
+export const api_url = "https://enklipse.com/api/v1";
 
 export const voices = [
   {
