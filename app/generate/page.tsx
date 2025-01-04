@@ -10,17 +10,17 @@ const options = [
   {
     title: "Script to Video",
     description: "Create short videos from your script",
-    content: "Content for Script to Video option",
+    icon: "📝", // You might want to replace these with proper icons
   },
   {
     title: "AI-Generated Content",
     description: "Let AI write the script and generate the short",
-    content: "Content for AI-Generated Content option",
+    icon: "🤖",
   },
   {
     title: "Automated Publishing",
     description: "AI automates video generation and uploads to socials",
-    content: "Content for Automated Publishing option",
+    icon: "🚀",
   },
 ];
 
@@ -54,15 +54,15 @@ export default function GeneratePage() {
   };
 
   return (
-    <main className="min-h-screen relative bg-[#0a0a0a] p-4 sm:p-6 md:p-8">
+    <main className="min-h-screen relative bg-[#0a0a0a] pt-16">
       <div className="absolute inset-0 bg-gradient-to-br from-[#0f0f0f] via-[#151515] to-[#0f0f0f] opacity-70"></div>
-      <div className="relative z-10 max-w-4xl mx-auto mt-16">
-        <h1 className="text-3xl sm:text-4xl font-bold text-gray-200 text-center mb-8 sm:mb-12">
-          Generate Content
-        </h1>
 
-        <div className="relative mb-8 bg-[#1a1a1a] rounded-xl p-1 shadow-md max-w-md mx-auto">
-          <div className="flex justify-center">
+      {/* Dashboard Layout */}
+      <div className="relative z-0 p-4 sm:p-6 md:p-8">
+        <div className="max-w-5xl mx-auto">
+
+          {/* Options Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {options.map((option, index) => (
               <button
                 key={index}
@@ -70,38 +70,32 @@ export default function GeneratePage() {
                   buttonRefs.current[index] = el;
                 }}
                 onClick={() => setSelectedOption(index)}
-                className={`relative z-10 px-3 py-2 text-xs sm:text-sm font-medium transition-colors duration-300 rounded-xl ${selectedOption === index
-                  ? "text-white"
-                  : "text-gray-300 hover:text-white"
+                className={`flex flex-col items-center p-4 rounded-xl transition-all duration-300 ${selectedOption === index
+                  ? "bg-emerald-700/20 border-2 border-emerald-600"
+                  : "bg-[#1a1a1a] border-2 border-transparent hover:border-emerald-600/50"
                   }`}
               >
-                {option.title}
+                <span className="text-3xl mb-3">{option.icon}</span>
+                <h3 className="text-lg font-semibold text-white mb-2">{option.title}</h3>
+                <p className="text-sm text-gray-400 text-center">{option.description}</p>
               </button>
             ))}
           </div>
-          <motion.div
-            className="absolute top-1 bottom-1 bg-emerald-700 rounded-xl"
-            initial={false}
-            animate={{
-              width: highlighterWidth,
-              x: highlighterOffset,
-            }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          />
-        </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={selectedOption}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="bg-[#1a1a1a] p-6 sm:p-8 rounded-xl shadow-md"
-          >
-            {renderForm()}
-          </motion.div>
-        </AnimatePresence>
+          {/* Content Area */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={selectedOption}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="bg-[#1a1a1a] p-6 sm:p-8 rounded-xl shadow-md"
+            >
+              {renderForm()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
     </main>
   );

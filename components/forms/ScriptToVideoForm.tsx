@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { api_url } from "@/constants";
+import { api_url, voices } from "@/constants";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
+import { Play, Pause, ChevronDown } from "lucide-react";
 
 const formSchema = z.object({
   title: z
@@ -32,6 +33,22 @@ const ScriptToVideoForm = () => {
   const [selectedVoice, setSelectedVoice] = useState("alloy");
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPlaying, setIsPlaying] = useState<string | null>(null);
+  const audioRefs = useRef<{ [key: string]: HTMLAudioElement | null }>({});
+
+  // Add this useEffect near the top of the component
+  useEffect(() => {
+    const getTemplateToken = async () => {
+      try {
+        const token = await getToken({ template: "test" });
+        console.log("Template JWT token:", token);
+      } catch (error) {
+        console.error("Error getting template token:", error);
+      }
+    };
+
+    getTemplateToken();
+  }, [getToken]);
 
   const {
     register,
@@ -58,8 +75,12 @@ const ScriptToVideoForm = () => {
     setIsSubmitting(true);
     try {
       const token = await getToken();
-      console.log("Narrator: " + data.voice);
-      const response = await fetch(`${api_url}/clip`, {
+      const selectedVoiceObj = voices.find(v => v.id === data.voice);
+
+      const imageModels = ["flux", "sdxl"];
+      const imageModel = imageModels[Math.floor(Math.random() * imageModels.length)];
+
+      const response = await fetch(`${api_url}/clips`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -70,39 +91,58 @@ const ScriptToVideoForm = () => {
           script: data.script,
           captionsRequired: true,
           narrator: data.voice,
+          text2SpeechProvider: selectedVoiceObj?.provider,
+          imageModel: imageModel,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate video");
+        const errorResp = await response.json();
+        throw new Error(errorResp.message);
       }
 
       const result = await response.json();
       console.log("Video generation successful:", result);
 
       router.push(`/generate/video/${result.clipId}`);
-    } catch (error) {
-      console.error("Error generating video:", error);
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to generate video. Please try again.",
+        description: error.message || "Failed to generate video. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const voices = [
-    { id: "alloy", name: "Alloy" },
-    { id: "echo", name: "Echo" },
-    { id: "fable", name: "Fable" },
-    { id: "onyx", name: "Onyx" },
-    { id: "nova", name: "Nova" },
-    { id: "shimmer", name: "Shimmer" },
-  ];
+
 
   const router = useRouter();
+
+  const playVoiceSample = (voiceId: string) => {
+    const voice = voices.find(v => v.id === voiceId);
+    if (!voice?.sampleUrl) return;
+
+    const audio = audioRefs.current[voiceId];
+    if (audio) {
+      if (isPlaying === voiceId) {
+        audio.pause();
+        setIsPlaying(null);
+      } else {
+        if (isPlaying && audioRefs.current[isPlaying]) {
+          audioRefs.current[isPlaying]!.pause();
+          audioRefs.current[isPlaying]!.currentTime = 0;
+        }
+        audio.play();
+        setIsPlaying(voiceId);
+      }
+    }
+  };
+
+  const handleAudioEnd = () => {
+    setIsPlaying(null);
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -156,19 +196,46 @@ const ScriptToVideoForm = () => {
         >
           Voice
         </label>
-        <select
-          {...register("voice")}
-          value={selectedVoice}
-          onChange={(e) => setSelectedVoice(e.target.value)}
-          className="w-full px-4 py-3 rounded-xl bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:bg-gray-700 transition duration-200"
-        >
-          {voices.map((voice) => (
-            <option key={voice.id} value={voice.id}>
-              {voice.name}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            {...register("voice")}
+            id="voice"
+            onChange={(e) => setSelectedVoice(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:bg-gray-700 transition duration-200 appearance-none pr-20"
+          >
+            {voices.map((voice) => (
+              <option key={voice.id} value={voice.id}>
+                {voice.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-10 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          {selectedVoice && (
+            <button
+              type="button"
+              onClick={() => playVoiceSample(selectedVoice)}
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+            >
+              {isPlaying === selectedVoice ? (
+                <Pause className="h-4 w-4 text-emerald-400" />
+              ) : (
+                <Play className="h-4 w-4 text-gray-400" />
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Add hidden audio elements */}
+        {voices.map((voice) => (
+          <audio
+            key={voice.id}
+            ref={el => { audioRefs.current[voice.id] = el }}
+            src={voice.sampleUrl}
+            onEnded={handleAudioEnd}
+          />
+        ))}
       </div>
+
       <button
         type="submit"
         disabled={isSubmitting}
