@@ -26,10 +26,19 @@ const VideoPage = () => {
     const { toast } = useToast();
     const [progress, setProgress] = useState({ percentage: 0, message: '' });
     const [isSSELoading, setIsSSELoading] = useState(false);
+    const [eventSource, setEventSource] = useState<EventSource | null>(null);
 
     useEffect(() => {
         fetchClipData();
-    }, []);
+
+        // Cleanup function
+        return () => {
+            if (eventSource) {
+                console.log('Cleaning up SSE connection');
+                eventSource.close();
+            }
+        };
+    }, []);  // Keep empty dependency array
 
     const fetchClipData = async () => {
         try {
@@ -72,7 +81,11 @@ const VideoPage = () => {
     };
 
     const setupSSE = async () => {
-        const clipId = params.clip;
+        // Close any existing connection
+        if (eventSource) {
+            eventSource.close();
+        }
+
         if (!userId) {
             toast({
                 variant: "destructive",
@@ -83,30 +96,41 @@ const VideoPage = () => {
         }
 
         try {
+            const clipId = params.clip;
             const encryptedUserId = encryptAES(userId);
             const encodedToken = encodeURIComponent(encryptedUserId);
-            const eventSource = new EventSource(`${api_url}/clip-status/${clipId}?token=${encodedToken}`);
+            const newEventSource = new EventSource(
+                `${api_url}/clip-status/${clipId}?token=${encodedToken}`
+            );
 
-            eventSource.onopen = (event) => {
-                console.log('SSE Connection opened:', event);
+            // Store the EventSource instance
+            setEventSource(newEventSource);
+
+            newEventSource.onopen = (event) => {
+                console.log('SSE Connection opened');
             };
 
-            eventSource.onmessage = (event) => {
-                console.log('Received generic message:', event.data);
-            };
-
-            eventSource.onerror = (error) => {
+            newEventSource.onerror = (error) => {
                 console.error('SSE Error:', error);
-                eventSource.close();
+                newEventSource.close();
                 setIsSSELoading(false);
+
+                // Only show toast if component is still mounted
                 toast({
                     variant: "destructive",
                     title: "Connection Error",
-                    description: "Error establishing connection with the server.",
+                    description: "Attempting to reconnect...",
                 });
+
+                // Attempt to reconnect after 5 seconds
+                setTimeout(() => {
+                    if (clipData?.status === 'I') {  // Only reconnect if still in progress
+                        setupSSE();
+                    }
+                }, 5000);
             };
 
-            eventSource.addEventListener('clip-status', (event) => {
+            newEventSource.addEventListener('clip-status', (event) => {
                 console.log('Received clip-status event:', event.data);
                 try {
                     const data = JSON.parse(event.data) as ClipStatusEvent;
@@ -115,8 +139,8 @@ const VideoPage = () => {
                         message: data.message
                     });
 
-                    if (data.percentage === 100) {
-                        eventSource.close();
+                    if (data.percentage === 100 || data.status === 'S') {
+                        newEventSource.close();
                         setIsSSELoading(false);
                         setClipData(prev => ({
                             ...prev!,
@@ -128,23 +152,24 @@ const VideoPage = () => {
                     }
 
                     if (data.status === 'E') {
-                        eventSource.close();
+                        newEventSource.close();
                         setIsSSELoading(false);
                         setClipData(prev => ({
                             ...prev!,
                             status: 'E'
                         }));
                         setIsLoading(false);
+                        toast({
+                            variant: "destructive",
+                            title: "Error",
+                            description: "Video generation failed. Please try again.",
+                        });
                     }
                 } catch (error) {
                     console.error('Error parsing SSE data:', error);
                 }
             });
 
-            return () => {
-                console.log('Closing SSE connection');
-                eventSource.close();
-            };
         } catch (error) {
             console.error('Setup SSE Error:', error);
             setIsSSELoading(false);
