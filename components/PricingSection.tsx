@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { api_url } from '@/constants';
+import { useToast } from '@/hooks/use-toast';
 
 interface PricingSectionProps {
     playfairClassName: string;
@@ -51,6 +52,7 @@ function MaxIcon({ className = "" }) {
 const PricingSection: React.FC<PricingSectionProps> = ({ playfairClassName }) => {
     const [promoCode, setPromoCode] = useState({ basic: '', pro: '', max: '' });
     const { getToken } = useAuth();
+    const { toast } = useToast();
 
     const handleSubscribe = async (tier: 'basic' | 'pro' | 'max') => {
         try {
@@ -72,11 +74,18 @@ const PricingSection: React.FC<PricingSectionProps> = ({ playfairClassName }) =>
                 throw new Error('Subscription failed');
             }
 
-            // Handle successful subscription
-            alert('Subscription created successfully!');
+            toast({
+                title: "Success",
+                description: "Subscription created successfully!",
+                variant: "default",
+            });
         } catch (error) {
             console.error('Error creating subscription:', error);
-            alert('Failed to create subscription');
+            toast({
+                title: "Error",
+                description: "Failed to create subscription",
+                variant: "destructive",
+            });
         }
     };
 
@@ -117,7 +126,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({ playfairClassName }) =>
                             value={promoCode.basic}
                             onChange={(e) => setPromoCode({ ...promoCode, basic: e.target.value })}
                         />
-                        <button 
+                        <button
                             className="w-full py-2 px-4 bg-emerald-800 text-white rounded-xl hover:bg-emerald-900 transition-colors"
                             onClick={() => handleSubscribe('basic')}
                         >
@@ -157,7 +166,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({ playfairClassName }) =>
                             value={promoCode.pro}
                             onChange={(e) => setPromoCode({ ...promoCode, pro: e.target.value })}
                         />
-                        <button 
+                        <button
                             className="w-full py-2 px-4 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
                             onClick={() => handleSubscribe('pro')}
                         >
@@ -194,7 +203,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({ playfairClassName }) =>
                             value={promoCode.max}
                             onChange={(e) => setPromoCode({ ...promoCode, max: e.target.value })}
                         />
-                        <button 
+                        <button
                             className="w-full py-2 px-4 bg-emerald-800 text-white rounded-xl hover:bg-emerald-900 transition-colors"
                             onClick={() => handleSubscribe('max')}
                         >
