@@ -121,7 +121,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({ playfairClassName }) =>
                     <div className="mt-auto">
                         <input
                             type="text"
-                            placeholder="Promo code"
+                            placeholder="Invite code"
                             className="w-full mb-4 p-2 rounded-xl bg-gray-800 text-white border border-gray-700"
                             value={promoCode.basic}
                             onChange={(e) => setPromoCode({ ...promoCode, basic: e.target.value })}
