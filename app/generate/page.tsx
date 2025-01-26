@@ -10,17 +10,20 @@ const options = [
   {
     title: "Script to Video",
     description: "Create short videos from your script",
-    icon: "📝", // You might want to replace these with proper icons
+    icon: "📝",
+    disabled: false,
   },
   {
     title: "AI-Generated Content",
-    description: "Let AI write the script and generate the short",
+    description: "Coming soon",
     icon: "🤖",
+    disabled: true,
   },
   {
     title: "Automated Publishing",
     description: "AI automates video generation and uploads to socials",
     icon: "🚀",
+    disabled: false,
   },
 ];
 
@@ -69,10 +72,12 @@ export default function GeneratePage() {
                 ref={(el) => {
                   buttonRefs.current[index] = el;
                 }}
-                onClick={() => setSelectedOption(index)}
-                className={`flex flex-col items-center p-4 rounded-xl transition-all duration-300 ${selectedOption === index
-                  ? "bg-emerald-700/20 border-2 border-emerald-600"
-                  : "bg-[#1a1a1a] border-2 border-transparent hover:border-emerald-600/50"
+                onClick={() => !option.disabled && setSelectedOption(index)}
+                className={`flex flex-col items-center p-4 rounded-xl transition-all duration-300 ${option.disabled
+                  ? "bg-gray-800/50 border-2 border-gray-700 cursor-not-allowed opacity-50"
+                  : selectedOption === index
+                    ? "bg-emerald-700/20 border-2 border-emerald-600"
+                    : "bg-[#1a1a1a] border-2 border-transparent hover:border-emerald-600/50"
                   }`}
               >
                 <span className="text-3xl mb-3">{option.icon}</span>
