@@ -1,5 +1,9 @@
 "use client";
 
+import { useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { api_url } from '@/constants';
+
 interface PricingSectionProps {
     playfairClassName: string;
 }
@@ -45,6 +49,37 @@ function MaxIcon({ className = "" }) {
 }
 
 const PricingSection: React.FC<PricingSectionProps> = ({ playfairClassName }) => {
+    const [promoCode, setPromoCode] = useState({ basic: '', pro: '', max: '' });
+    const { getToken } = useAuth();
+
+    const handleSubscribe = async (tier: 'basic' | 'pro' | 'max') => {
+        try {
+            const token = await getToken();
+            const response = await fetch(`${api_url}/subscriptions`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    promo: promoCode[tier],
+                    numOfVideos: 10,
+                    tier: tier
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Subscription failed');
+            }
+
+            // Handle successful subscription
+            alert('Subscription created successfully!');
+        } catch (error) {
+            console.error('Error creating subscription:', error);
+            alert('Failed to create subscription');
+        }
+    };
+
     return (
         <section className="w-full max-w-7xl mx-auto px-4 py-24">
             <h2 className={`${playfairClassName} text-4xl text-center mb-12 text-white`}>
@@ -75,7 +110,17 @@ const PricingSection: React.FC<PricingSectionProps> = ({ playfairClassName }) =>
                         </ul>
                     </div>
                     <div className="mt-auto">
-                        <button className="w-full py-2 px-4 bg-emerald-800 text-white rounded-xl hover:bg-emerald-900 transition-colors">
+                        <input
+                            type="text"
+                            placeholder="Promo code"
+                            className="w-full mb-4 p-2 rounded-xl bg-gray-800 text-white border border-gray-700"
+                            value={promoCode.basic}
+                            onChange={(e) => setPromoCode({ ...promoCode, basic: e.target.value })}
+                        />
+                        <button 
+                            className="w-full py-2 px-4 bg-emerald-800 text-white rounded-xl hover:bg-emerald-900 transition-colors"
+                            onClick={() => handleSubscribe('basic')}
+                        >
                             Get Started
                         </button>
                     </div>
@@ -105,7 +150,17 @@ const PricingSection: React.FC<PricingSectionProps> = ({ playfairClassName }) =>
                         </ul>
                     </div>
                     <div className="mt-auto">
-                        <button className="w-full py-2 px-4 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors">
+                        <input
+                            type="text"
+                            placeholder="Promo code"
+                            className="w-full mb-4 p-2 rounded-xl bg-gray-800 text-white border border-gray-700"
+                            value={promoCode.pro}
+                            onChange={(e) => setPromoCode({ ...promoCode, pro: e.target.value })}
+                        />
+                        <button 
+                            className="w-full py-2 px-4 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
+                            onClick={() => handleSubscribe('pro')}
+                        >
                             Get Started
                         </button>
                     </div>
@@ -132,8 +187,18 @@ const PricingSection: React.FC<PricingSectionProps> = ({ playfairClassName }) =>
                         </ul>
                     </div>
                     <div className="mt-auto">
-                        <button className="w-full py-2 px-4 bg-emerald-800 text-white rounded-xl hover:bg-emerald-900 transition-colors">
-                            Get started
+                        <input
+                            type="text"
+                            placeholder="Promo code"
+                            className="w-full mb-4 p-2 rounded-xl bg-gray-800 text-white border border-gray-700"
+                            value={promoCode.max}
+                            onChange={(e) => setPromoCode({ ...promoCode, max: e.target.value })}
+                        />
+                        <button 
+                            className="w-full py-2 px-4 bg-emerald-800 text-white rounded-xl hover:bg-emerald-900 transition-colors"
+                            onClick={() => handleSubscribe('max')}
+                        >
+                            Get Started
                         </button>
                     </div>
                 </div>
