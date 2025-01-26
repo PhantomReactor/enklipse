@@ -77,7 +77,7 @@ const ScriptToVideoForm = () => {
       const token = await getToken();
       const selectedVoiceObj = voices.find(v => v.id === data.voice);
 
-      const imageModels = ["flux", "sdxl"];
+      const imageModels = ["flux"];
       const imageModel = imageModels[Math.floor(Math.random() * imageModels.length)];
 
       const response = await fetch(`${api_url}/clips`, {
