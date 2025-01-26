@@ -24,21 +24,10 @@ const VideoPage = () => {
     const [clipData, setClipData] = useState<ClipResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
-    const [progress, setProgress] = useState({ percentage: 0, message: '' });
-    const [isSSELoading, setIsSSELoading] = useState(false);
-    const [eventSource, setEventSource] = useState<EventSource | null>(null);
 
     useEffect(() => {
         fetchClipData();
-
-        // Cleanup function
-        return () => {
-            if (eventSource) {
-                console.log('Cleaning up SSE connection');
-                eventSource.close();
-            }
-        };
-    }, []);  // Keep empty dependency array
+    }, []);
 
     const fetchClipData = async () => {
         try {
@@ -56,19 +45,14 @@ const VideoPage = () => {
             const data: ClipResponse = await response.json();
             setClipData(data);
 
-            if (data.status === 'I') {
-                setIsSSELoading(true);
-                setupSSE();
-            } else {
-                if (data.status === 'E') {
-                    toast({
-                        variant: "destructive",
-                        title: "Error",
-                        description: "Video generation failed. Please try again.",
-                    });
-                }
-                setIsLoading(false);
+            if (data.status === 'E') {
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Video generation failed. Please try again.",
+                });
             }
+            setIsLoading(false);
         } catch (error: any) {
             console.error('Error fetching clip data:', error);
             toast({
@@ -77,107 +61,6 @@ const VideoPage = () => {
                 description: error.message || "Failed to fetch video data.",
             });
             setIsLoading(false);
-        }
-    };
-
-    const setupSSE = async () => {
-        // Close any existing connection
-        if (eventSource) {
-            eventSource.close();
-        }
-
-        if (!userId) {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "User authentication failed. Please try logging in again.",
-            });
-            return;
-        }
-
-        try {
-            const clipId = params.clip;
-            const encryptedUserId = encryptAES(userId);
-            const encodedToken = encodeURIComponent(encryptedUserId);
-            const newEventSource = new EventSource(
-                `${api_url}/clip-status/${clipId}?token=${encodedToken}`
-            );
-
-            // Store the EventSource instance
-            setEventSource(newEventSource);
-
-            newEventSource.onopen = (event) => {
-                console.log('SSE Connection opened');
-            };
-
-            newEventSource.onerror = (error) => {
-                console.error('SSE Error:', error);
-                newEventSource.close();
-                setIsSSELoading(false);
-
-                // Only show toast if component is still mounted
-                toast({
-                    variant: "destructive",
-                    title: "Connection Error",
-                    description: "Attempting to reconnect...",
-                });
-
-                // Attempt to reconnect after 5 seconds
-                setTimeout(() => {
-                    if (clipData?.status === 'I') {  // Only reconnect if still in progress
-                        setupSSE();
-                    }
-                }, 5000);
-            };
-
-            newEventSource.addEventListener('clip-status', (event) => {
-                console.log('Received clip-status event:', event.data);
-                try {
-                    const data = JSON.parse(event.data) as ClipStatusEvent;
-                    setProgress({
-                        percentage: data.percentage,
-                        message: data.message
-                    });
-
-                    if (data.percentage === 100 || data.status === 'S') {
-                        newEventSource.close();
-                        setIsSSELoading(false);
-                        setClipData(prev => ({
-                            ...prev!,
-                            status: 'S',
-                            clipUrl: data.clipUrl!,
-                            script: data.script!
-                        }));
-                        setIsLoading(false);
-                    }
-
-                    if (data.status === 'E') {
-                        newEventSource.close();
-                        setIsSSELoading(false);
-                        setClipData(prev => ({
-                            ...prev!,
-                            status: 'E'
-                        }));
-                        setIsLoading(false);
-                        toast({
-                            variant: "destructive",
-                            title: "Error",
-                            description: "Video generation failed. Please try again.",
-                        });
-                    }
-                } catch (error) {
-                    console.error('Error parsing SSE data:', error);
-                }
-            });
-
-        } catch (error) {
-            console.error('Setup SSE Error:', error);
-            setIsSSELoading(false);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to establish connection with the server.",
-            });
         }
     };
 
@@ -239,23 +122,10 @@ const VideoPage = () => {
         <div className="container mx-auto px-4 py-8">
             {isLoading ? (
                 <div className="flex flex-col justify-center items-center min-h-[70vh]">
-                    {isSSELoading ? (
-                        <div className="text-center text-gray-400 w-full max-w-md">
-                            <div className="w-full bg-gray-700 h-4 mb-4">
-                                <div
-                                    className="bg-green-500 h-4 transition-all duration-300 ease-in-out"
-                                    style={{ width: `${progress.percentage}%` }}
-                                />
-                            </div>
-                            <p>Loading... {progress.percentage}%</p>
-                            <p className="text-sm mt-2">{progress.message}</p>
-                        </div>
-                    ) : (
-                        <div className="text-center text-gray-400">
-                            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-                            <p className="mt-2">Loading video data...</p>
-                        </div>
-                    )}
+                    <div className="text-center text-gray-400">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                        <p className="mt-2">Loading video data...</p>
+                    </div>
                 </div>
             ) : (
                 <div className="mt-8 sm:mt-16">
@@ -304,7 +174,7 @@ const VideoPage = () => {
                         <div className="aspect-w-16 aspect-h-9 sm:aspect-none sm:h-[400px] h-[250px] flex justify-center items-center">
                             {clipData?.status === 'I' ? (
                                 <div className="text-center text-gray-400">
-                                    <p>Generating your video...</p>
+                                    <p>Your video is being generated. Please check the videos page in about 5 minutes.</p>
                                 </div>
                             ) : clipData?.status === 'S' ? (
                                 <video
